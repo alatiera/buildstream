@@ -25,6 +25,7 @@ conform to this interface.
 See also: :ref:`sandboxing`.
 """
 
+import datetime
 import os
 import shlex
 import contextlib
@@ -34,6 +35,8 @@ from typing import Dict, Generator, List, Optional, TYPE_CHECKING
 from .._exceptions import ImplError, SandboxError
 from ..storage.directory import Directory
 from ..storage._casbaseddirectory import CasBasedDirectory
+
+from .._message import Message, MessageType
 
 if TYPE_CHECKING:
     from typing import Union
@@ -369,7 +372,14 @@ class Sandbox:
             current_group.append(batch_command)
             return None
         else:
-            return self._run(command, flags=flags, cwd=cwd, env=env)
+            context = self._get_context()
+            start_time = datetime.datetime.now()
+            result = self._run(command, flags=flags, cwd=cwd, env=env)
+            elapsed = datetime.datetime.now() - start_time
+            message = Message(MessageType.INFO, f"Standalone run in: {elapsed}", detail=str(command), element_name=self._get_element_name())
+            context.messenger.message(message)
+
+            return result
 
     # _get_context()
     #
@@ -659,6 +669,7 @@ class _SandboxBatch:
             group.execute_children(self)
 
     def execute_command(self, command):
+        context = self.sandbox._get_context()
         if command.label:
             context = self.sandbox._get_context()
             context.messenger.status(
@@ -667,7 +678,14 @@ class _SandboxBatch:
                 element_name=self.sandbox._get_element_name(),
             )
 
+        start_time = datetime.datetime.now()
+
         exitcode = self.sandbox._run(command.command, flags=self.flags, cwd=command.cwd, env=command.env)
+        elapsed = datetime.datetime.now() - start_time
+
+        message = Message(MessageType.INFO, f"Batched Command run in: {elapsed}", element_name=self.sandbox._get_element_name())
+        context.messenger.message(message)
+
         if exitcode != 0:
             cmdline = " ".join(shlex.quote(cmd) for cmd in command.command)
             label = command.label or cmdline
