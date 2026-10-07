@@ -304,4 +304,8 @@ class BuildElement(Element):
         # Note the -e switch to 'sh' means to exit with an error
         # if any untested command fails.
         #
+
+        # When the commands get batched, the timed_activity is 0 and useless
+        # with self.timed_activity("Running command with thing", detail=f"{cmd}", silent_nested=True):
+        sandbox.run(["sh", "-c", "-e", "date -u" + "\n"], root_read_only=True)
         sandbox.run(["sh", "-c", "-e", cmd + "\n"], root_read_only=True, label=cmd)
