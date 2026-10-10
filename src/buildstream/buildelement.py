@@ -237,8 +237,8 @@ class BuildElement(Element):
 
     def assemble(self, sandbox):
 
-        with sandbox.batch(root_read_only=True, label="Running commands"):
 
+        with self.timed_activity("Running configure commands"), sandbox.batch(root_read_only=True):
             # We need to ensure that configure-commands are only called
             # once in workspaces, because the changes will persist across
             # incremental builds - not desirable, for example, in the case
@@ -270,6 +270,7 @@ class BuildElement(Element):
                 if self._get_workspace():
                     sandbox._create_empty_file(marker_filename)
 
+        with self.timed_activity("Running commands"), sandbox.batch(root_read_only=True):
             # Run commands
             for command_name in _command_steps:
                 commands = self.__commands[command_name]
@@ -279,6 +280,7 @@ class BuildElement(Element):
                 for cmd in commands:
                     self.__run_command(sandbox, cmd)
 
+        with self.timed_activity("Running cleanup commands"), sandbox.batch(root_read_only=True):
             # Empty the build directory after a successful build to avoid the
             # overhead of capturing the build directory.
             self.run_cleanup_commands(sandbox)
